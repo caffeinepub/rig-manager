@@ -26,12 +26,11 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
       try {
-        const adminToken = getSecretParameter("caffeineAdminToken") || "";
         await actor._initializeAccessControlWithSecret(adminToken);
       } catch (e) {
-        // Ignore initialization errors — actor is still usable
-        console.warn("Access control init warning (non-fatal):", e);
+        console.warn("Access control init failed (non-fatal):", e);
       }
       return actor;
     },
