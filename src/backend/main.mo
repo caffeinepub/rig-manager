@@ -2,7 +2,6 @@ import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Time "mo:core/Time";
 import Order "mo:core/Order";
-import List "mo:core/List";
 import Array "mo:core/Array";
 import Int "mo:core/Int";
 import Iter "mo:core/Iter";
@@ -16,8 +15,7 @@ import AccessControl "authorization/access-control";
 import Storage "blob-storage/Storage";
 import MixinStorage "blob-storage/Mixin";
 
-// Attach migration logic to actor
- actor {
+actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -27,6 +25,8 @@ import MixinStorage "blob-storage/Mixin";
   type NoteId = Nat;
   type JumpId = Nat;
   type CheckId = Nat;
+
+  // Counters — implicitly stable inside actor
   var nextRigId = 0;
   var nextNoteId = 0;
   var nextJumpId = 0;
@@ -155,7 +155,6 @@ import MixinStorage "blob-storage/Mixin";
       completedBy : Text;
       completedDate : Text;
       signatureData : Text;
-      // Checklist items as comma-separated "item:pass/fail" or freeform notes
       checklistData : Text;
       notes : Text;
       createdAt : Int;
@@ -256,36 +255,65 @@ import MixinStorage "blob-storage/Mixin";
     notes : Text;
   };
 
+  // Stable backing arrays — data survives canister upgrades (implicitly stable)
+  var stableRigs : [Rig.Rig] = [];
+  var stableNotes : [RiggerNote.RiggerNote] = [];
+  var stableJumps : [PackJob.PackJob] = [];
+  var stableChecks : [FiftyJumpCheck.FiftyJumpCheck] = [];
+
+  // Working in-memory maps
   let rigsStore = Map.empty<RigId, Rig.Rig>();
   let notesStore = Map.empty<NoteId, RiggerNote.RiggerNote>();
   let jumpsStore = Map.empty<JumpId, PackJob.PackJob>();
   let checksStore = Map.empty<CheckId, FiftyJumpCheck.FiftyJumpCheck>();
   let userProfiles = Map.empty<Principal, UserProfile>();
 
+  // Restore from stable storage on upgrade
+  system func postupgrade() {
+    for (rig in stableRigs.vals()) {
+      rigsStore.add(rig.id, rig);
+    };
+    for (note in stableNotes.vals()) {
+      notesStore.add(note.id, note);
+    };
+    for (jump in stableJumps.vals()) {
+      jumpsStore.add(jump.id, jump);
+    };
+    for (check in stableChecks.vals()) {
+      checksStore.add(check.id, check);
+    };
+    stableRigs := [];
+    stableNotes := [];
+    stableJumps := [];
+    stableChecks := [];
+  };
+
+  // Persist to stable storage before upgrade
+  system func preupgrade() {
+    stableRigs := rigsStore.values().toArray();
+    stableNotes := notesStore.values().toArray();
+    stableJumps := jumpsStore.values().toArray();
+    stableChecks := checksStore.values().toArray();
+  };
+
   // User profile management functions
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
-    };
+    requireLogin(caller);
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
+    requireLogin(caller);
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
+    requireLogin(caller);
     userProfiles.add(caller, profile);
   };
 
   public shared ({ caller }) func createRig(name : Text, ownerName : Text) : async Rig.Rig {
-    checkWritePermission(caller);
+    requireLogin(caller);
     let id = nextRigId;
     nextRigId += 1;
     let rig : Rig.Rig = {
@@ -307,7 +335,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func updateRig(input : ?RigUpdateInput) : async ?Rig.Rig {
-    checkWritePermission(caller);
+    requireLogin(caller);
     let ui = switch (input) {
       case (null) { return null };
       case (?i) { i };
@@ -336,35 +364,29 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func deleteRig(rigId : RigId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     if (not rigsStore.containsKey(rigId)) { return false };
     rigsStore.remove(rigId);
     true;
   };
 
   public query ({ caller }) func getRigs() : async [Rig.Rig] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view rigs");
-    };
+    requireLogin(caller);
     rigsStore.values().toArray().sort();
   };
 
   public query ({ caller }) func getRig(id : RigId) : async ?Rig.Rig {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view rigs");
-    };
+    requireLogin(caller);
     rigsStore.get(id);
   };
 
   public query ({ caller }) func getRigsByUser(username : Text) : async [Rig.Rig] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view rigs");
-    };
+    requireLogin(caller);
     rigsStore.values().toArray().filter(func(rig) { rig.ownerName == username }).sort();
   };
 
   public shared ({ caller }) func setHarnessContainer(input : HarnessContainer.HarnessContainer) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(input.id)) {
       case (null) { false };
       case (?rig) {
@@ -389,7 +411,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func addHarnessImage(id : RigId, input : Storage.ExternalBlob) : async ?HarnessContainer.HarnessContainer {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(id)) {
       case (null) { null };
       case (?rig) {
@@ -427,7 +449,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func removeHarnessContainer(rigId : RigId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(rigId)) {
       case (null) { false };
       case (?rig) {
@@ -452,7 +474,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func setAAD(input : AAD.AAD) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(input.id)) {
       case (null) { false };
       case (?rig) {
@@ -477,7 +499,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func removeAAD(id : RigId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(id)) {
       case (null) { false };
       case (?rig) {
@@ -502,7 +524,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func setReserveCanopy(input : ReserveRepackInput) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     let expiryDate = calcExpiryDate(input.dateRepacked);
     let reserve : ReserveCanopy.ReserveCanopy = {
       id = input.id;
@@ -538,7 +560,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func removeReserveCanopy(id : RigId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(id)) {
       case (null) { false };
       case (?rig) {
@@ -563,7 +585,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func setMainCanopy(input : MainCanopyInput) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     let canopy : MainCanopy.MainCanopy = {
       id = input.id;
       manufacturer = input.manufacturer;
@@ -599,7 +621,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func updateMainCanopyJumps(input : MainCanopyJumpsInput) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(input.id)) {
       case (null) { false };
       case (?rig) {
@@ -635,7 +657,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func removeMainCanopy(id : RigId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(id)) {
       case (null) { false };
       case (?rig) {
@@ -660,7 +682,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func setTandemMainCanopy(input : TandemCanopyInput) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     let canopy : TandemMainCanopy.TandemMainCanopy = {
       id = input.id;
       manufacturer = input.manufacturer;
@@ -698,7 +720,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func updateTandemMainCanopyJumps(input : TandemCanopyJumpsInput) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(input.id)) {
       case (null) { false };
       case (?rig) {
@@ -736,7 +758,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func removeTandemMainCanopy(id : RigId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(id)) {
       case (null) { false };
       case (?rig) {
@@ -761,7 +783,7 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public shared ({ caller }) func addRiggerNote(rigId : RigId, componentType : Text, note : Text) : async ?RiggerNote.RiggerNote {
-    checkWritePermission(caller);
+    requireLogin(caller);
     nextNoteId += 1;
     let newNote : RiggerNote.RiggerNote = {
       id = nextNoteId;
@@ -775,14 +797,12 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public query ({ caller }) func getRiggerNotes(rigId : RigId) : async [RiggerNote.RiggerNote] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view rigger notes");
-    };
+    requireLogin(caller);
     notesStore.values().toArray().filter(func(n) { n.rigId == rigId }).sort();
   };
 
   public shared ({ caller }) func addPackJob(rigId : RigId, packerName : Text, signatureData : Text, packDate : Text) : async ?PackJob.PackJob {
-    checkWritePermission(caller);
+    requireLogin(caller);
     nextJumpId += 1;
     let newJump : PackJob.PackJob = {
       id = nextJumpId;
@@ -797,7 +817,6 @@ import MixinStorage "blob-storage/Mixin";
     switch (rigsStore.get(rigId)) {
       case (null) { null };
       case (?rig) {
-        // Increment main canopy jump tallies if present
         let updatedMainCanopy : ?MainCanopy.MainCanopy = switch (rig.mainCanopy) {
           case (null) { null };
           case (?mc) {
@@ -843,21 +862,19 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public query ({ caller }) func getPackJobs(rigId : RigId) : async [PackJob.PackJob] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view pack jobs");
-    };
+    requireLogin(caller);
     jumpsStore.values().toArray().filter(func(j) { j.rigId == rigId }).sort();
   };
 
   public shared ({ caller }) func deletePackJob(jumpId : JumpId) : async Bool {
-    checkWritePermission(caller);
+    requireLogin(caller);
     if (not jumpsStore.containsKey(jumpId)) { return false };
     jumpsStore.remove(jumpId);
     true;
   };
 
   public shared ({ caller }) func completeFiftyJumpCheck(input : FiftyJumpCheckInput) : async ?FiftyJumpCheck.FiftyJumpCheck {
-    checkWritePermission(caller);
+    requireLogin(caller);
     switch (rigsStore.get(input.rigId)) {
       case (null) { null };
       case (?rig) {
@@ -873,7 +890,6 @@ import MixinStorage "blob-storage/Mixin";
           createdAt = Time.now();
         };
         checksStore.add(nextCheckId, newCheck);
-        // Reset jumpsSinceLastCheck
         let updated : Rig.Rig = {
           id = rig.id;
           name = rig.name;
@@ -895,16 +911,12 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   public query ({ caller }) func getFiftyJumpChecks(rigId : RigId) : async [FiftyJumpCheck.FiftyJumpCheck] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view fifty jump checks");
-    };
+    requireLogin(caller);
     checksStore.values().toArray().filter(func(c) { c.rigId == rigId }).sort();
   };
 
   public query ({ caller }) func getRigComponents(rigId : RigId) : async ?RigComponents {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view rig components");
-    };
+    requireLogin(caller);
     switch (rigsStore.get(rigId)) {
       case (null) { null };
       case (?rig) {
@@ -921,7 +933,6 @@ import MixinStorage "blob-storage/Mixin";
   };
 
   func calcExpiryDate(repackDate : Text) : Text {
-    // Parse YYYY-MM-DD and add 6 months
     let parts = repackDate.split(#char '-').toArray();
     if (parts.size() < 3) return repackDate;
     let yearOpt = Nat.fromText(parts[0]);
@@ -944,9 +955,10 @@ import MixinStorage "blob-storage/Mixin";
     };
   };
 
-  func checkWritePermission(caller : Principal) {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can perform this action");
+  // Allow any authenticated (non-anonymous) user
+  func requireLogin(caller : Principal) {
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: You must be logged in");
     };
   };
 };

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   ChevronRight,
   Loader2,
   LogIn,
@@ -26,6 +27,71 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 interface DashboardProps {
   onSelectRig: (rigId: bigint) => void;
+}
+
+function getReserveDaysRemaining(rig: Rig): number | null {
+  const expiry = rig.reserveCanopy?.expiryDate;
+  if (!expiry || expiry.trim() === "") return null;
+  const expiryTime = new Date(expiry).getTime();
+  if (Number.isNaN(expiryTime)) return null;
+  const now = Date.now();
+  return Math.ceil((expiryTime - now) / (1000 * 60 * 60 * 24));
+}
+
+function getFlaggedItems(
+  rig: Rig,
+): Array<{ label: string; severity: "warning" | "critical" }> {
+  const flags: Array<{ label: string; severity: "warning" | "critical" }> = [];
+  const now = Date.now();
+
+  // Reserve canopy expiry
+  const reserveDays = getReserveDaysRemaining(rig);
+  if (reserveDays !== null) {
+    if (reserveDays < 0) {
+      flags.push({ label: "Reserve canopy expired", severity: "critical" });
+    } else if (reserveDays <= 30) {
+      flags.push({
+        label: `Reserve expires in ${reserveDays} day${reserveDays === 1 ? "" : "s"}`,
+        severity: "warning",
+      });
+    }
+  }
+
+  // AAD service date
+  const serviceDate = rig.aad?.serviceDate;
+  if (serviceDate && serviceDate.trim() !== "") {
+    const t = new Date(serviceDate).getTime();
+    if (!Number.isNaN(t)) {
+      const days = Math.ceil((t - now) / (1000 * 60 * 60 * 24));
+      if (days < 0) {
+        flags.push({ label: "AAD service overdue", severity: "critical" });
+      } else if (days <= 30) {
+        flags.push({
+          label: `AAD service due in ${days} day${days === 1 ? "" : "s"}`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+
+  // AAD end of life
+  const endOfLife = rig.aad?.endOfLife;
+  if (endOfLife && endOfLife.trim() !== "") {
+    const t = new Date(endOfLife).getTime();
+    if (!Number.isNaN(t)) {
+      const days = Math.ceil((t - now) / (1000 * 60 * 60 * 24));
+      if (days < 0) {
+        flags.push({ label: "AAD end of life reached", severity: "critical" });
+      } else if (days <= 30) {
+        flags.push({
+          label: `AAD end of life in ${days} day${days === 1 ? "" : "s"}`,
+          severity: "warning",
+        });
+      }
+    }
+  }
+
+  return flags;
 }
 
 export default function Dashboard({ onSelectRig }: DashboardProps) {
@@ -166,67 +232,163 @@ export default function Dashboard({ onSelectRig }: DashboardProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rigs.map((rig, idx) => (
-              <article
-                key={String(rig.id)}
-                className="bg-white rounded-xl border border-border hover:border-primary hover:shadow-md transition-all"
-                style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
-                data-ocid={`dashboard.item.${idx + 1}`}
-              >
-                <button
-                  type="button"
-                  className="w-full text-left p-5 cursor-pointer group"
-                  onClick={() => onSelectRig(rig.id)}
+            {rigs.map((rig, idx) => {
+              const reserveDays = getReserveDaysRemaining(rig);
+              const flaggedItems = getFlaggedItems(rig);
+              const hasCritical = flaggedItems.some(
+                (f) => f.severity === "critical",
+              );
+              const hasFlags = flaggedItems.length > 0;
+
+              return (
+                <article
+                  key={String(rig.id)}
+                  className="bg-white rounded-xl border border-border hover:border-primary hover:shadow-md transition-all"
+                  style={{
+                    boxShadow: hasFlags
+                      ? hasCritical
+                        ? "0 2px 8px rgba(220,38,38,0.15)"
+                        : "0 2px 8px rgba(245,158,11,0.15)"
+                      : "0 2px 8px rgba(0,0,0,0.06)",
+                    borderColor: hasFlags
+                      ? hasCritical
+                        ? "#ef4444"
+                        : "#f59e0b"
+                      : undefined,
+                  }}
+                  data-ocid={`dashboard.item.${idx + 1}`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                        {rig.name}
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        {rig.ownerName}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 mt-0.5" />
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <div
-                      className="px-3 py-1 rounded-full text-white text-sm font-semibold"
-                      style={{ backgroundColor: "#2E6F9E" }}
-                    >
-                      {Number(rig.totalJumps).toLocaleString()} jumps
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {getComponentBadges(rig).map((badge) => (
-                      <span
-                        key={badge.label}
-                        className="px-2 py-0.5 rounded text-white text-xs font-medium"
-                        style={{ backgroundColor: badge.color }}
-                      >
-                        {badge.label}
-                      </span>
-                    ))}
-                    {getComponentBadges(rig).length === 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        No components added
-                      </span>
-                    )}
-                  </div>
-                </button>
-                <div className="px-5 pb-4 border-t border-border pt-3 flex justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    onClick={() => setDeleteConfirmId(rig.id)}
-                    data-ocid={`dashboard.delete_button.${idx + 1}`}
+                  <button
+                    type="button"
+                    className="w-full text-left p-5 cursor-pointer group"
+                    onClick={() => onSelectRig(rig.id)}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </article>
-            ))}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-lg font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                          {rig.name}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {rig.ownerName}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 mt-0.5" />
+                    </div>
+
+                    {/* Jump count + reserve days remaining */}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div
+                        className="px-3 py-1 rounded-full text-white text-sm font-semibold"
+                        style={{ backgroundColor: "#2E6F9E" }}
+                      >
+                        {Number(rig.totalJumps).toLocaleString()} jumps
+                      </div>
+                      {reserveDays !== null && (
+                        <div
+                          className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                          style={
+                            reserveDays < 0
+                              ? {
+                                  backgroundColor: "#fee2e2",
+                                  color: "#b91c1c",
+                                  border: "1px solid #fca5a5",
+                                }
+                              : reserveDays <= 30
+                                ? {
+                                    backgroundColor: "#fef3c7",
+                                    color: "#92400e",
+                                    border: "1px solid #fcd34d",
+                                  }
+                                : {
+                                    backgroundColor: "#d1fae5",
+                                    color: "#065f46",
+                                    border: "1px solid #6ee7b7",
+                                  }
+                          }
+                        >
+                          {reserveDays < 0
+                            ? "Reserve EXPIRED"
+                            : `Reserve expires in ${reserveDays} day${reserveDays === 1 ? "" : "s"}`}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Component badges */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {getComponentBadges(rig).map((badge) => (
+                        <span
+                          key={badge.label}
+                          className="px-2 py-0.5 rounded text-white text-xs font-medium"
+                          style={{ backgroundColor: badge.color }}
+                        >
+                          {badge.label}
+                        </span>
+                      ))}
+                      {getComponentBadges(rig).length === 0 && (
+                        <span className="text-xs text-muted-foreground">
+                          No components added
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Flagged items warning banner */}
+                    {hasFlags && (
+                      <div
+                        className="mt-3 rounded-lg px-3 py-2"
+                        style={
+                          hasCritical
+                            ? {
+                                backgroundColor: "#fef2f2",
+                                border: "1px solid #fca5a5",
+                              }
+                            : {
+                                backgroundColor: "#fffbeb",
+                                border: "1px solid #fcd34d",
+                              }
+                        }
+                        data-ocid={`dashboard.item.${idx + 1}.error_state`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle
+                            className="w-4 h-4 flex-shrink-0 mt-0.5"
+                            style={{
+                              color: hasCritical ? "#dc2626" : "#d97706",
+                            }}
+                          />
+                          <ul className="space-y-0.5">
+                            {flaggedItems.map((item) => (
+                              <li
+                                key={item.label}
+                                className="text-xs font-medium"
+                                style={{
+                                  color:
+                                    item.severity === "critical"
+                                      ? "#b91c1c"
+                                      : "#92400e",
+                                }}
+                              >
+                                {item.label}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                  <div className="px-5 pb-4 border-t border-border pt-3 flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => setDeleteConfirmId(rig.id)}
+                      data-ocid={`dashboard.delete_button.${idx + 1}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </main>
