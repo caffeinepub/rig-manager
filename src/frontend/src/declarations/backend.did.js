@@ -240,6 +240,7 @@ export const idlService = IDL.Service({
     ),
   'createRig' : IDL.Func([IDL.Text, IDL.Text], [Rig], []),
   'deleteRig' : IDL.Func([RigId], [IDL.Bool], []),
+  'deletePackJob' : IDL.Func([JumpId], [IDL.Bool], []),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getFiftyJumpChecks' : IDL.Func(
@@ -514,6 +515,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'createRig' : IDL.Func([IDL.Text, IDL.Text], [Rig], []),
     'deleteRig' : IDL.Func([RigId], [IDL.Bool], []),
+  'deletePackJob' : IDL.Func([JumpId], [IDL.Bool], []),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getFiftyJumpChecks' : IDL.Func(

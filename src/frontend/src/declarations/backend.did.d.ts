@@ -218,6 +218,7 @@ export interface _SERVICE {
   >,
   'createRig' : ActorMethod<[string, string], Rig>,
   'deleteRig' : ActorMethod<[RigId], boolean>,
+  'deletePackJob' : ActorMethod<[JumpId], boolean>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getFiftyJumpChecks' : ActorMethod<[RigId], Array<FiftyJumpCheck>>,
