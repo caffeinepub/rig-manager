@@ -284,6 +284,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     completeFiftyJumpCheck(input: FiftyJumpCheckInput): Promise<FiftyJumpCheck | null>;
     createRig(name: string, ownerName: string): Promise<Rig>;
+    deletePackJob(jumpId: JumpId): Promise<boolean>;
     deleteRig(rigId: RigId): Promise<boolean>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -507,6 +508,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteRig(arg0);
+            return result;
+        }
+    }
+    async deletePackJob(arg0: JumpId): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).deletePackJob(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await (this.actor as any).deletePackJob(arg0);
             return result;
         }
     }

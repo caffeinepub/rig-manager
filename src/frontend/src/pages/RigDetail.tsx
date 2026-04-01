@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +40,7 @@ import {
   Eye,
   Loader2,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -693,6 +704,19 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
     onError: () => toast.error("Failed to log pack job"),
   });
 
+  const [deleteJobId, setDeleteJobId] = useState<bigint | null>(null);
+  const deletePackJob = useMutation({
+    mutationFn: async (jobId: bigint) => {
+      if (!actor) throw new Error("No actor");
+      return actor.deletePackJob(jobId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["packjobs", String(rigId)] });
+      toast.success("Pack job deleted");
+    },
+    onError: () => toast.error("Failed to delete pack job"),
+  });
+
   // ── 50-Jump Check ────────────────────────────────────────────────────────
   const submitFiftyJumpCheck = useMutation({
     mutationFn: async (data: {
@@ -1035,181 +1059,190 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
               <RiggerNotes rigId={rigId} componentType="reserve" />
             </ComponentCard>
 
-            {/* Main Canopy */}
-            <ComponentCard
-              title="Main Canopy"
-              exists={!!rig.mainCanopy}
-              onAdd={openMainEdit}
-              onEdit={openMainEdit}
-              onRemove={() => removeMain.mutate()}
-              actions={
-                rig.mainCanopy ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      if (rig.mainCanopy) {
-                        setMainForm({
-                          manufacturer: rig.mainCanopy.manufacturer,
-                          serialNumber: rig.mainCanopy.serialNumber,
-                          canopyType: rig.mainCanopy.canopyType,
-                          dateOfManufacture: rig.mainCanopy.dateOfManufacture,
-                          jumpsOnLineSet: String(rig.mainCanopy.jumpsOnLineSet),
-                          jumpsOnMainRisers: String(
-                            rig.mainCanopy.jumpsOnMainRisers,
-                          ),
-                          totalJumps: String(rig.mainCanopy.totalJumps),
-                        });
-                      }
-                      setMainJumpsOpen(true);
-                    }}
-                    data-ocid="main.edit_button"
-                  >
-                    Edit Jumps
-                  </Button>
-                ) : undefined
-              }
-            >
-              {rig.mainCanopy && (
-                <>
-                  {rig.mainCanopy.image && (
-                    <img
-                      src={rig.mainCanopy.image.getDirectURL()}
-                      alt="Main Canopy"
-                      className="w-full max-h-48 object-cover rounded-lg mb-3"
+            {/* Main Canopy - only show if no tandem canopy added */}
+            {!rig.tandemCanopy && (
+              <ComponentCard
+                title="Main Canopy"
+                exists={!!rig.mainCanopy}
+                onAdd={openMainEdit}
+                onEdit={openMainEdit}
+                onRemove={() => removeMain.mutate()}
+                actions={
+                  rig.mainCanopy ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (rig.mainCanopy) {
+                          setMainForm({
+                            manufacturer: rig.mainCanopy.manufacturer,
+                            serialNumber: rig.mainCanopy.serialNumber,
+                            canopyType: rig.mainCanopy.canopyType,
+                            dateOfManufacture: rig.mainCanopy.dateOfManufacture,
+                            jumpsOnLineSet: String(
+                              rig.mainCanopy.jumpsOnLineSet,
+                            ),
+                            jumpsOnMainRisers: String(
+                              rig.mainCanopy.jumpsOnMainRisers,
+                            ),
+                            totalJumps: String(rig.mainCanopy.totalJumps),
+                          });
+                        }
+                        setMainJumpsOpen(true);
+                      }}
+                      data-ocid="main.edit_button"
+                    >
+                      Edit Jumps
+                    </Button>
+                  ) : undefined
+                }
+              >
+                {rig.mainCanopy && (
+                  <>
+                    {rig.mainCanopy.image && (
+                      <img
+                        src={rig.mainCanopy.image.getDirectURL()}
+                        alt="Main Canopy"
+                        className="w-full max-h-48 object-cover rounded-lg mb-3"
+                      />
+                    )}
+                    <InfoRow
+                      label="Manufacturer"
+                      value={rig.mainCanopy.manufacturer}
                     />
-                  )}
-                  <InfoRow
-                    label="Manufacturer"
-                    value={rig.mainCanopy.manufacturer}
-                  />
-                  <InfoRow
-                    label="Serial Number"
-                    value={rig.mainCanopy.serialNumber}
-                  />
-                  <InfoRow label="Type" value={rig.mainCanopy.canopyType} />
-                  <InfoRow
-                    label="Date of Manufacture"
-                    value={rig.mainCanopy.dateOfManufacture}
-                  />
-                  <InfoRow
-                    label="Jumps on Line Set"
-                    value={Number(
-                      rig.mainCanopy.jumpsOnLineSet,
-                    ).toLocaleString()}
-                  />
-                  <InfoRow
-                    label="Jumps on Main Risers"
-                    value={Number(
-                      rig.mainCanopy.jumpsOnMainRisers,
-                    ).toLocaleString()}
-                  />
-                  <InfoRow
-                    label="Total Jumps"
-                    value={Number(rig.mainCanopy.totalJumps).toLocaleString()}
-                  />
-                </>
-              )}
-              <RiggerNotes rigId={rigId} componentType="main" />
-            </ComponentCard>
+                    <InfoRow
+                      label="Serial Number"
+                      value={rig.mainCanopy.serialNumber}
+                    />
+                    <InfoRow label="Type" value={rig.mainCanopy.canopyType} />
+                    <InfoRow
+                      label="Date of Manufacture"
+                      value={rig.mainCanopy.dateOfManufacture}
+                    />
+                    <InfoRow
+                      label="Jumps on Line Set"
+                      value={Number(
+                        rig.mainCanopy.jumpsOnLineSet,
+                      ).toLocaleString()}
+                    />
+                    <InfoRow
+                      label="Jumps on Main Risers"
+                      value={Number(
+                        rig.mainCanopy.jumpsOnMainRisers,
+                      ).toLocaleString()}
+                    />
+                    <InfoRow
+                      label="Total Jumps"
+                      value={Number(rig.mainCanopy.totalJumps).toLocaleString()}
+                    />
+                  </>
+                )}
+                <RiggerNotes rigId={rigId} componentType="main" />
+              </ComponentCard>
+            )}
 
-            {/* Tandem Canopy */}
-            <ComponentCard
-              title="Tandem Main Canopy"
-              exists={!!rig.tandemCanopy}
-              onAdd={openTandemEdit}
-              onEdit={openTandemEdit}
-              onRemove={() => removeTandem.mutate()}
-              actions={
-                rig.tandemCanopy ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      if (rig.tandemCanopy) {
-                        setTandemForm({
-                          manufacturer: rig.tandemCanopy.manufacturer,
-                          serialNumber: rig.tandemCanopy.serialNumber,
-                          canopyType: rig.tandemCanopy.canopyType,
-                          dateOfManufacture: rig.tandemCanopy.dateOfManufacture,
-                          jumpsOnLineSet: String(
-                            rig.tandemCanopy.jumpsOnLineSet,
-                          ),
-                          jumpsOnMainRisers: String(
-                            rig.tandemCanopy.jumpsOnMainRisers,
-                          ),
-                          jumpsOnDrogueBridle: String(
-                            rig.tandemCanopy.jumpsOnDrogueBridle,
-                          ),
-                          jumpsOnLowerBridleKillLine: String(
-                            rig.tandemCanopy.jumpsOnLowerBridleKillLine,
-                          ),
-                          totalJumps: String(rig.tandemCanopy.totalJumps),
-                        });
-                      }
-                      setTandemJumpsOpen(true);
-                    }}
-                    data-ocid="tandem.edit_button"
-                  >
-                    Edit Jumps
-                  </Button>
-                ) : undefined
-              }
-            >
-              {rig.tandemCanopy && (
-                <>
-                  {rig.tandemCanopy.image && (
-                    <img
-                      src={rig.tandemCanopy.image.getDirectURL()}
-                      alt="Tandem Canopy"
-                      className="w-full max-h-48 object-cover rounded-lg mb-3"
+            {/* Tandem Canopy - only show if no main canopy added */}
+            {!rig.mainCanopy && (
+              <ComponentCard
+                title="Tandem Main Canopy"
+                exists={!!rig.tandemCanopy}
+                onAdd={openTandemEdit}
+                onEdit={openTandemEdit}
+                onRemove={() => removeTandem.mutate()}
+                actions={
+                  rig.tandemCanopy ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (rig.tandemCanopy) {
+                          setTandemForm({
+                            manufacturer: rig.tandemCanopy.manufacturer,
+                            serialNumber: rig.tandemCanopy.serialNumber,
+                            canopyType: rig.tandemCanopy.canopyType,
+                            dateOfManufacture:
+                              rig.tandemCanopy.dateOfManufacture,
+                            jumpsOnLineSet: String(
+                              rig.tandemCanopy.jumpsOnLineSet,
+                            ),
+                            jumpsOnMainRisers: String(
+                              rig.tandemCanopy.jumpsOnMainRisers,
+                            ),
+                            jumpsOnDrogueBridle: String(
+                              rig.tandemCanopy.jumpsOnDrogueBridle,
+                            ),
+                            jumpsOnLowerBridleKillLine: String(
+                              rig.tandemCanopy.jumpsOnLowerBridleKillLine,
+                            ),
+                            totalJumps: String(rig.tandemCanopy.totalJumps),
+                          });
+                        }
+                        setTandemJumpsOpen(true);
+                      }}
+                      data-ocid="tandem.edit_button"
+                    >
+                      Edit Jumps
+                    </Button>
+                  ) : undefined
+                }
+              >
+                {rig.tandemCanopy && (
+                  <>
+                    {rig.tandemCanopy.image && (
+                      <img
+                        src={rig.tandemCanopy.image.getDirectURL()}
+                        alt="Tandem Canopy"
+                        className="w-full max-h-48 object-cover rounded-lg mb-3"
+                      />
+                    )}
+                    <InfoRow
+                      label="Manufacturer"
+                      value={rig.tandemCanopy.manufacturer}
                     />
-                  )}
-                  <InfoRow
-                    label="Manufacturer"
-                    value={rig.tandemCanopy.manufacturer}
-                  />
-                  <InfoRow
-                    label="Serial Number"
-                    value={rig.tandemCanopy.serialNumber}
-                  />
-                  <InfoRow label="Type" value={rig.tandemCanopy.canopyType} />
-                  <InfoRow
-                    label="Date of Manufacture"
-                    value={rig.tandemCanopy.dateOfManufacture}
-                  />
-                  <InfoRow
-                    label="Jumps on Line Set"
-                    value={Number(
-                      rig.tandemCanopy.jumpsOnLineSet,
-                    ).toLocaleString()}
-                  />
-                  <InfoRow
-                    label="Jumps on Main Risers"
-                    value={Number(
-                      rig.tandemCanopy.jumpsOnMainRisers,
-                    ).toLocaleString()}
-                  />
-                  <InfoRow
-                    label="Jumps on Drogue/Bridle"
-                    value={Number(
-                      rig.tandemCanopy.jumpsOnDrogueBridle,
-                    ).toLocaleString()}
-                  />
-                  <InfoRow
-                    label="Jumps on Lower Bridle/Kill Line"
-                    value={Number(
-                      rig.tandemCanopy.jumpsOnLowerBridleKillLine,
-                    ).toLocaleString()}
-                  />
-                  <InfoRow
-                    label="Total Jumps"
-                    value={Number(rig.tandemCanopy.totalJumps).toLocaleString()}
-                  />
-                </>
-              )}
-              <RiggerNotes rigId={rigId} componentType="tandem" />
-            </ComponentCard>
+                    <InfoRow
+                      label="Serial Number"
+                      value={rig.tandemCanopy.serialNumber}
+                    />
+                    <InfoRow label="Type" value={rig.tandemCanopy.canopyType} />
+                    <InfoRow
+                      label="Date of Manufacture"
+                      value={rig.tandemCanopy.dateOfManufacture}
+                    />
+                    <InfoRow
+                      label="Jumps on Line Set"
+                      value={Number(
+                        rig.tandemCanopy.jumpsOnLineSet,
+                      ).toLocaleString()}
+                    />
+                    <InfoRow
+                      label="Jumps on Main Risers"
+                      value={Number(
+                        rig.tandemCanopy.jumpsOnMainRisers,
+                      ).toLocaleString()}
+                    />
+                    <InfoRow
+                      label="Jumps on Drogue/Bridle"
+                      value={Number(
+                        rig.tandemCanopy.jumpsOnDrogueBridle,
+                      ).toLocaleString()}
+                    />
+                    <InfoRow
+                      label="Jumps on Lower Bridle/Kill Line"
+                      value={Number(
+                        rig.tandemCanopy.jumpsOnLowerBridleKillLine,
+                      ).toLocaleString()}
+                    />
+                    <InfoRow
+                      label="Total Jumps"
+                      value={Number(
+                        rig.tandemCanopy.totalJumps,
+                      ).toLocaleString()}
+                    />
+                  </>
+                )}
+                <RiggerNotes rigId={rigId} componentType="tandem" />
+              </ComponentCard>
+            )}
           </TabsContent>
 
           {/* Jump Log Tab */}
@@ -1248,6 +1281,7 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                           <TableHead>Date</TableHead>
                           <TableHead>Packer Name</TableHead>
                           <TableHead>Signature</TableHead>
+                          <TableHead />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1270,6 +1304,17 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                                   —
                                 </span>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setDeleteJobId(job.id)}
+                                data-ocid={`packlog.delete_button.${idx + 1}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -2218,6 +2263,40 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog
+        open={deleteJobId !== null}
+        onOpenChange={(open) => !open && setDeleteJobId(null)}
+      >
+        <AlertDialogContent data-ocid="packlog.dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Pack Job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this pack job entry? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              data-ocid="packlog.cancel_button"
+              onClick={() => setDeleteJobId(null)}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-ocid="packlog.confirm_button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteJobId !== null) {
+                  deletePackJob.mutate(deleteJobId);
+                  setDeleteJobId(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

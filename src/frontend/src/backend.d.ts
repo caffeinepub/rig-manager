@@ -191,6 +191,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     completeFiftyJumpCheck(input: FiftyJumpCheckInput): Promise<FiftyJumpCheck | null>;
     createRig(name: string, ownerName: string): Promise<Rig>;
+    deletePackJob(jumpId: JumpId): Promise<boolean>;
     deleteRig(rigId: RigId): Promise<boolean>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;

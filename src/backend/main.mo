@@ -797,6 +797,18 @@ import MixinStorage "blob-storage/Mixin";
     switch (rigsStore.get(rigId)) {
       case (null) { null };
       case (?rig) {
+        // Increment main canopy jump tallies if present
+        let updatedMainCanopy : ?MainCanopy.MainCanopy = switch (rig.mainCanopy) {
+          case (null) { null };
+          case (?mc) {
+            ?{
+              mc with
+              jumpsOnLineSet = mc.jumpsOnLineSet + 1;
+              jumpsOnMainRisers = mc.jumpsOnMainRisers + 1;
+              totalJumps = mc.totalJumps + 1;
+            };
+          };
+        };
         let updated : Rig.Rig = {
           id = rig.id;
           name = rig.name;
@@ -808,7 +820,7 @@ import MixinStorage "blob-storage/Mixin";
           harnessContainer = rig.harnessContainer;
           aad = rig.aad;
           reserveCanopy = rig.reserveCanopy;
-          mainCanopy = rig.mainCanopy;
+          mainCanopy = updatedMainCanopy;
           tandemCanopy = rig.tandemCanopy;
         };
         rigsStore.add(rigId, updated);
@@ -822,6 +834,13 @@ import MixinStorage "blob-storage/Mixin";
       Runtime.trap("Unauthorized: Only users can view pack jobs");
     };
     jumpsStore.values().toArray().filter(func(j) { j.rigId == rigId }).sort();
+  };
+
+  public shared ({ caller }) func deletePackJob(jumpId : JumpId) : async Bool {
+    checkWritePermission(caller);
+    if (not jumpsStore.containsKey(jumpId)) { return false };
+    jumpsStore.remove(jumpId);
+    true;
   };
 
   public shared ({ caller }) func completeFiftyJumpCheck(input : FiftyJumpCheckInput) : async ?FiftyJumpCheck.FiftyJumpCheck {
