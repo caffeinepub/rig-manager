@@ -42,10 +42,7 @@ module {
     switch (state.userRoles.get(caller)) {
       case (?role) { role };
       case (null) {
-        // Auto-register unrecognized non-anonymous callers as users
-        // so that a failed _initializeAccessControlWithSecret never blocks app usage
-        state.userRoles.add(caller, #user);
-        #user;
+        Runtime.trap("User is not registered");
       };
     };
   };

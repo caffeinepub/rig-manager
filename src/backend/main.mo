@@ -809,6 +809,19 @@ import MixinStorage "blob-storage/Mixin";
             };
           };
         };
+        let updatedTandemCanopy : ?TandemMainCanopy.TandemMainCanopy = switch (rig.tandemCanopy) {
+          case (null) { null };
+          case (?tc) {
+            ?{
+              tc with
+              jumpsOnLineSet = tc.jumpsOnLineSet + 1;
+              jumpsOnMainRisers = tc.jumpsOnMainRisers + 1;
+              jumpsOnDrogueBridle = tc.jumpsOnDrogueBridle + 1;
+              jumpsOnLowerBridleKillLine = tc.jumpsOnLowerBridleKillLine + 1;
+              totalJumps = tc.totalJumps + 1;
+            };
+          };
+        };
         let updated : Rig.Rig = {
           id = rig.id;
           name = rig.name;
@@ -821,7 +834,7 @@ import MixinStorage "blob-storage/Mixin";
           aad = rig.aad;
           reserveCanopy = rig.reserveCanopy;
           mainCanopy = updatedMainCanopy;
-          tandemCanopy = rig.tandemCanopy;
+          tandemCanopy = updatedTandemCanopy;
         };
         rigsStore.add(rigId, updated);
         ?newJump;
