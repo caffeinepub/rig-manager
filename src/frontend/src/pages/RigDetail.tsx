@@ -62,6 +62,7 @@ import AppHeader from "../components/AppHeader";
 import ComponentCard from "../components/ComponentCard";
 import FiftyJumpCheckModal from "../components/FiftyJumpCheckModal";
 import SignaturePad from "../components/SignaturePad";
+import TandemFiftyJumpCheckModal from "../components/TandemFiftyJumpCheckModal";
 import { useActor } from "../hooks/useActor";
 
 interface RigDetailProps {
@@ -1450,6 +1451,38 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                                 </p>
                               </div>
                             )}
+                            {(() => {
+                              let pd: { noteImages?: string[] } = {};
+                              try {
+                                pd = JSON.parse(check.checklistData);
+                              } catch {
+                                /* ignore */
+                              }
+                              return pd.noteImages &&
+                                pd.noteImages.length > 0 ? (
+                                <div className="pt-2 border-t border-border">
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                                    Damage Photos
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {pd.noteImages.map((src, i) => (
+                                      <a
+                                        key={src.slice(0, 40)}
+                                        href={src}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <img
+                                          src={src}
+                                          alt={`Damage ${i + 1}`}
+                                          className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity cursor-pointer"
+                                        />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null;
+                            })()}
                             {check.signatureData?.startsWith("data:") && (
                               <div className="pt-2 border-t border-border">
                                 <p className="text-xs font-medium text-muted-foreground mb-1">
@@ -1614,6 +1647,37 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                               </p>
                             </div>
                           )}
+                          {(() => {
+                            let pd: { noteImages?: string[] } = {};
+                            try {
+                              pd = JSON.parse(check.checklistData);
+                            } catch {
+                              /* ignore */
+                            }
+                            return pd.noteImages && pd.noteImages.length > 0 ? (
+                              <div className="pt-2 border-t border-border">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">
+                                  Damage Photos
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {pd.noteImages.map((src, i) => (
+                                    <a
+                                      key={src.slice(0, 40)}
+                                      href={src}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <img
+                                        src={src}
+                                        alt={`Damage ${i + 1}`}
+                                        className="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity cursor-pointer"
+                                      />
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
                           {check.signatureData?.startsWith("data:") && (
                             <div className="pt-2 border-t border-border">
                               <p className="text-xs font-medium text-muted-foreground mb-1">
@@ -1638,27 +1702,46 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
       </main>
 
       {/* ── 50-Jump Check Modal ── */}
-      {rig && (
-        <FiftyJumpCheckModal
-          open={checkModalOpen}
-          rigName={rig.name}
-          jumpsSince={jumpsSince}
-          isSubmitting={submitFiftyJumpCheck.isPending}
-          onSubmit={(data) => submitFiftyJumpCheck.mutate(data)}
-        />
-      )}
+      {rig &&
+        (rig.tandemCanopy ? (
+          <TandemFiftyJumpCheckModal
+            open={checkModalOpen}
+            rigName={rig.name}
+            jumpsSince={jumpsSince}
+            isSubmitting={submitFiftyJumpCheck.isPending}
+            onSubmit={(data) => submitFiftyJumpCheck.mutate(data)}
+          />
+        ) : (
+          <FiftyJumpCheckModal
+            open={checkModalOpen}
+            rigName={rig.name}
+            jumpsSince={jumpsSince}
+            isSubmitting={submitFiftyJumpCheck.isPending}
+            onSubmit={(data) => submitFiftyJumpCheck.mutate(data)}
+          />
+        ))}
 
       {/* ── 50-Jump Check Preview Modal ── */}
-      {rig && (
-        <FiftyJumpCheckModal
-          open={previewCheckOpen}
-          rigName={rig.name}
-          jumpsSince={jumpsSince}
-          isSubmitting={false}
-          onClose={() => setPreviewCheckOpen(false)}
-          onSubmit={() => setPreviewCheckOpen(false)}
-        />
-      )}
+      {rig &&
+        (rig.tandemCanopy ? (
+          <TandemFiftyJumpCheckModal
+            open={previewCheckOpen}
+            rigName={rig.name}
+            jumpsSince={jumpsSince}
+            isSubmitting={false}
+            onClose={() => setPreviewCheckOpen(false)}
+            onSubmit={() => setPreviewCheckOpen(false)}
+          />
+        ) : (
+          <FiftyJumpCheckModal
+            open={previewCheckOpen}
+            rigName={rig.name}
+            jumpsSince={jumpsSince}
+            isSubmitting={false}
+            onClose={() => setPreviewCheckOpen(false)}
+            onSubmit={() => setPreviewCheckOpen(false)}
+          />
+        ))}
 
       {/* ── Edit Rig Dialog ── */}
       <Dialog open={editRigOpen} onOpenChange={setEditRigOpen}>

@@ -22,47 +22,55 @@ import SignaturePad from "./SignaturePad";
 
 const SECTIONS = [
   {
-    heading: "Main Canopy",
+    heading: "Drogue/Main",
     items: [
-      "Pilot chute handle/fabric/seams",
-      "Pin smooth and attached to bridle",
-      "Kill line/bridle serviceable",
-      "Deployment bag material/grommets/rubber band loops serviceable",
-      "Bridle/Canopy attachment secure",
-      "Canopy fabric and stitching intact",
-      "Line attachments, cascades and brake locking loops serviceable",
-      "Slider material and grommets serviceable",
-      "Soft links correctly assembled and serviceable",
+      "Drogue chute handle secure",
+      "Drogue chute fabric, mesh and seams intact",
+      "Drogue kill line calibrated correctly +-5mm and bridle free of damage (Should be 150mm)",
+      "Pin smooth and securely attached to bridle",
+      "Disc assembly tight, free of sharp edges, cover in good repair",
+      "Top grommet and bag not warped",
+      "Stow band loops securely stitched",
+      "Bridle attachment point to canopy secure",
+      "No fabric damage or broken stitching",
+      "Cross port vents not ripped",
+      "Stitching on line attachment points and cascades secure",
+      "No damage to lines, especially steering lines at cascades and brake locking loops",
+      "No damage to slider material",
+      "Slider grommets not warped, bent or worn through",
+      "Connector links correctly assembled and not worn",
     ],
   },
   {
-    heading: "Risers and Toggles",
+    heading: "Risers/Toggles",
     items: [
-      "All rings free of corrosion",
+      "No corrosion on any hardware",
       "Stitching and webbing serviceable",
       "Brake line excess keepers serviceable",
+      "Toggles securely knotted",
       "Toggle keepers serviceable",
     ],
   },
   {
     heading: "3 Rings Maintenance",
     items: [
-      "Disconnect RSL, remove cutaway and clean cables with silicone spray",
-      "Flex and massage webbing",
+      "Disconnect RSL, remove cutaway cables and wipe clean with silicone spray",
+      "Flex and massage webbing before reconnecting",
       "3 Rings correctly attached and RSL connected",
-      "Cutaway cable routed through MARD",
+      "Cutaway cables correctly routed through the MARD system",
     ],
     requiresSecondSignatory: true,
   },
   {
-    heading: "Harness and Container",
+    heading: "Harness/Container",
     items: [
-      "Fabric and stitching serviceable",
-      "Flaps and grommets, reserve cable and swage secure",
-      "Emergency handles secure",
+      "No fabric damage or broken stitching",
+      "All flaps are secure, grommets not deformed",
+      "Reserve cable swage (ball on end of cable) secure",
+      "Emergency handles securely held in place",
       "BOC secure and undamaged",
       "Main closing loop serviceable",
-      "Reserve closing loop secure",
+      "Reserve closing loop secure and not frayed",
     ],
   },
 ];
@@ -131,7 +139,7 @@ function compressImage(
   });
 }
 
-export default function FiftyJumpCheckModal({
+export default function TandemFiftyJumpCheckModal({
   open,
   rigName,
   jumpsSince,
@@ -236,7 +244,7 @@ export default function FiftyJumpCheckModal({
         onEscapeKeyDown={(e) => {
           if (!isPreview) e.preventDefault();
         }}
-        data-ocid="fiftyjump.dialog"
+        data-ocid="tandem_fiftyjump.dialog"
       >
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -246,8 +254,8 @@ export default function FiftyJumpCheckModal({
             <div>
               <DialogTitle className="text-lg font-bold text-foreground">
                 {isPreview
-                  ? `50-Jump Check Form Preview — ${rigName}`
-                  : `50-Jump Check Required — ${rigName}`}
+                  ? `Tandem Main Canopy — 50-Jump Check Preview — ${rigName}`
+                  : `Tandem Main Canopy — 50-Jump Check Required — ${rigName}`}
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-0.5">
                 {isPreview
@@ -283,7 +291,7 @@ export default function FiftyJumpCheckModal({
                         <div
                           key={item.label}
                           className="rounded-lg border border-border bg-muted/30 p-3"
-                          data-ocid={`fiftyjump.item.${idx + 1}`}
+                          data-ocid={`tandem_fiftyjump.item.${idx + 1}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <span className="text-sm font-medium text-foreground flex-1 pt-0.5">
@@ -298,7 +306,7 @@ export default function FiftyJumpCheckModal({
                                     ? "bg-green-600 text-white border-green-600"
                                     : "bg-white text-green-700 border-green-300 hover:bg-green-50"
                                 }`}
-                                data-ocid={`fiftyjump.checkbox.${idx + 1}`}
+                                data-ocid={`tandem_fiftyjump.checkbox.${idx + 1}`}
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Serviceable
@@ -327,7 +335,7 @@ export default function FiftyJumpCheckModal({
                               onChange={(e) =>
                                 setItemNotes(idx, e.target.value)
                               }
-                              data-ocid={`fiftyjump.input.${idx + 1}`}
+                              data-ocid={`tandem_fiftyjump.input.${idx + 1}`}
                             />
                           )}
                         </div>
@@ -346,19 +354,19 @@ export default function FiftyJumpCheckModal({
                       </p>
                       <div className="space-y-1.5">
                         <Label
-                          htmlFor="secondSignatoryName"
+                          htmlFor="tandemSecondSignatoryName"
                           className="text-blue-900"
                         >
                           Second Signatory Name
                         </Label>
                         <Input
-                          id="secondSignatoryName"
+                          id="tandemSecondSignatoryName"
                           value={secondSignatoryName}
                           onChange={(e) =>
                             setSecondSignatoryName(e.target.value)
                           }
                           placeholder="Name of second signatory"
-                          data-ocid="fiftyjump.second_signatory_name"
+                          data-ocid="tandem_fiftyjump.second_signatory_name"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -384,25 +392,24 @@ export default function FiftyJumpCheckModal({
               );
             })}
 
-            {/* Primary signatory, notes & damage photos */}
             <div className="border-t border-border pt-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="completedBy">
+                  <Label htmlFor="tandemCompletedBy">
                     Performed By (Packer Name)
                   </Label>
                   <Input
-                    id="completedBy"
+                    id="tandemCompletedBy"
                     value={completedBy}
                     onChange={(e) => setCompletedBy(e.target.value)}
                     placeholder="Packer name"
-                    data-ocid="fiftyjump.input"
+                    data-ocid="tandem_fiftyjump.input"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="completedDate">Date</Label>
+                  <Label htmlFor="tandemCompletedDate">Date</Label>
                   <Input
-                    id="completedDate"
+                    id="tandemCompletedDate"
                     type="date"
                     value={completedDate}
                     onChange={(e) => setCompletedDate(e.target.value)}
@@ -418,7 +425,7 @@ export default function FiftyJumpCheckModal({
                   placeholder="Additional observations or notes..."
                   className="resize-none"
                   rows={3}
-                  data-ocid="fiftyjump.textarea"
+                  data-ocid="tandem_fiftyjump.textarea"
                 />
               </div>
 
@@ -434,14 +441,14 @@ export default function FiftyJumpCheckModal({
                   onChange={(e) => {
                     if (e.target.files) handleImageFiles(e.target.files);
                   }}
-                  data-ocid="fiftyjump.upload_button"
+                  data-ocid="tandem_fiftyjump.upload_button"
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingImages}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed border-border bg-muted/20 hover:bg-muted/40 text-sm text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
-                  data-ocid="fiftyjump.dropzone"
+                  data-ocid="tandem_fiftyjump.dropzone"
                 >
                   {uploadingImages ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -497,7 +504,7 @@ export default function FiftyJumpCheckModal({
               <Button
                 variant="outline"
                 onClick={onClose}
-                data-ocid="fiftyjump.close_button"
+                data-ocid="tandem_fiftyjump.close_button"
               >
                 Close Preview
               </Button>
@@ -513,7 +520,7 @@ export default function FiftyJumpCheckModal({
             disabled={!canSubmit || isSubmitting}
             onClick={handleSubmit}
             style={{ backgroundColor: canSubmit ? "#2E6F9E" : undefined }}
-            data-ocid="fiftyjump.submit_button"
+            data-ocid="tandem_fiftyjump.submit_button"
           >
             {isSubmitting ? "Submitting..." : "Submit 50-Jump Check"}
           </Button>
