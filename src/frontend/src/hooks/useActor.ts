@@ -26,8 +26,12 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      await actor._initializeAccessControlWithSecret(adminToken);
+      try {
+        const adminToken = getSecretParameter("caffeineAdminToken") || "";
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (_e) {
+        // Ignore initialization errors — actor is still usable
+      }
       return actor;
     },
     // Only refetch when identity changes

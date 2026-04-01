@@ -27,6 +27,7 @@ import {
   CheckCircle,
   ClipboardList,
   Download,
+  Eye,
   Loader2,
   Pencil,
 } from "lucide-react";
@@ -210,6 +211,7 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
   const checkRequired = jumpsSince >= 50;
   const [checkModalOpen, setCheckModalOpen] = useState(false);
   const [checkModalDismissed, setCheckModalDismissed] = useState(false);
+  const [previewCheckOpen, setPreviewCheckOpen] = useState(false);
 
   // Open modal automatically when check is required (reset dismissed state when rig data changes)
   if (checkRequired && !checkModalOpen && !checkModalDismissed) {
@@ -1212,7 +1214,7 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
 
           {/* Jump Log Tab */}
           <TabsContent value="jumplog">
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="flex justify-end">
                 <Button
                   style={{ backgroundColor: "#2E6F9E" }}
@@ -1222,53 +1224,206 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                   Log Pack Job
                 </Button>
               </div>
-              {packJobs.length === 0 ? (
-                <div
-                  className="text-center py-12 bg-white rounded-xl border border-border text-muted-foreground"
-                  data-ocid="packlog.empty_state"
-                >
-                  No pack jobs recorded yet
-                </div>
-              ) : (
-                <div
-                  className="bg-white rounded-xl border border-border overflow-hidden"
-                  style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
-                >
-                  <Table data-ocid="packlog.table">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Packer Name</TableHead>
-                        <TableHead>Signature</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {packJobs.map((job, idx) => (
-                        <TableRow
-                          key={String(job.id)}
-                          data-ocid={`packlog.row.${idx + 1}`}
-                        >
-                          <TableCell>{job.packDate}</TableCell>
-                          <TableCell>{job.packerName}</TableCell>
-                          <TableCell>
-                            {job.signatureData?.startsWith("data:") ? (
-                              <img
-                                src={job.signatureData}
-                                alt="Signature"
-                                className="h-10 w-auto border border-border rounded"
-                              />
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                —
-                              </span>
-                            )}
-                          </TableCell>
+
+              {/* Pack Jobs */}
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  Pack Jobs
+                </h3>
+                {packJobs.length === 0 ? (
+                  <div
+                    className="text-center py-10 bg-white rounded-xl border border-border text-muted-foreground"
+                    data-ocid="packlog.empty_state"
+                  >
+                    No pack jobs recorded yet
+                  </div>
+                ) : (
+                  <div
+                    className="bg-white rounded-xl border border-border overflow-hidden"
+                    style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+                  >
+                    <Table data-ocid="packlog.table">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Packer Name</TableHead>
+                          <TableHead>Signature</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                      </TableHeader>
+                      <TableBody>
+                        {packJobs.map((job, idx) => (
+                          <TableRow
+                            key={String(job.id)}
+                            data-ocid={`packlog.row.${idx + 1}`}
+                          >
+                            <TableCell>{job.packDate}</TableCell>
+                            <TableCell>{job.packerName}</TableCell>
+                            <TableCell>
+                              {job.signatureData?.startsWith("data:") ? (
+                                <img
+                                  src={job.signatureData}
+                                  alt="Signature"
+                                  className="h-10 w-auto border border-border rounded"
+                                />
+                              ) : (
+                                <span className="text-muted-foreground text-sm">
+                                  —
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+
+              {/* 50-Jump Check Records */}
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  50-Jump Check Records
+                </h3>
+                {fiftyJumpChecks.length === 0 ? (
+                  <div className="text-center py-10 bg-white rounded-xl border border-border text-muted-foreground">
+                    No 50-jump checks recorded yet
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {fiftyJumpChecks.map((check, idx) => {
+                      let parsedData: {
+                        sections?: Array<{
+                          heading: string;
+                          items: Array<{
+                            label: string;
+                            status: string;
+                            notes: string;
+                          }>;
+                        }>;
+                        secondSignatory?: {
+                          name: string;
+                          confirmedItem: string;
+                        };
+                      } = {};
+                      try {
+                        parsedData = JSON.parse(check.checklistData);
+                      } catch {
+                        /* ignore */
+                      }
+                      const allItems =
+                        parsedData.sections?.flatMap((s) => s.items) ?? [];
+                      const serviceableCount = allItems.filter(
+                        (i) => i.status === "serviceable",
+                      ).length;
+                      const notServiceableCount = allItems.filter(
+                        (i) => i.status === "not_serviceable",
+                      ).length;
+                      return (
+                        <details
+                          key={String(check.id)}
+                          className="bg-white rounded-xl border border-border overflow-hidden"
+                          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}
+                          data-ocid={`packlog.fiftyjump.${idx + 1}`}
+                        >
+                          <summary className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/30 transition-colors list-none">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <ClipboardList className="w-4 h-4 text-blue-700" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-foreground text-sm">
+                                  {check.completedDate}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  50-Jump Check — {check.completedBy}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {notServiceableCount > 0 && (
+                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-xs">
+                                  {notServiceableCount} not serviceable
+                                </Badge>
+                              )}
+                              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
+                                {serviceableCount}/{allItems.length} serviceable
+                              </Badge>
+                            </div>
+                          </summary>
+                          <div className="border-t border-border p-4 space-y-4">
+                            {parsedData.sections?.map((section) => (
+                              <div key={section.heading}>
+                                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground mb-2">
+                                  {section.heading}
+                                </p>
+                                <div className="space-y-1">
+                                  {section.items.map((item) => (
+                                    <div
+                                      key={item.label}
+                                      className="flex items-start gap-2 text-sm"
+                                    >
+                                      {item.status === "serviceable" ? (
+                                        <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                      ) : (
+                                        <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                      )}
+                                      <div>
+                                        <span className="text-foreground">
+                                          {item.label}
+                                        </span>
+                                        {item.notes && (
+                                          <p className="text-xs text-muted-foreground">
+                                            {item.notes}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                            {parsedData.secondSignatory && (
+                              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                                <p className="text-xs font-semibold text-blue-800 mb-1">
+                                  Second Signatory — 3 Rings & MARD
+                                </p>
+                                <p className="text-sm text-blue-900">
+                                  {parsedData.secondSignatory.name}
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  {parsedData.secondSignatory.confirmedItem}
+                                </p>
+                              </div>
+                            )}
+                            {check.notes && (
+                              <div className="pt-2 border-t border-border">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">
+                                  Notes
+                                </p>
+                                <p className="text-sm text-foreground">
+                                  {check.notes}
+                                </p>
+                              </div>
+                            )}
+                            {check.signatureData?.startsWith("data:") && (
+                              <div className="pt-2 border-t border-border">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">
+                                  Packer Signature
+                                </p>
+                                <img
+                                  src={check.signatureData}
+                                  alt="Signature"
+                                  className="h-12 w-auto border border-border rounded"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
 
@@ -1312,6 +1467,15 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                     Complete 50-Jump Check
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => setPreviewCheckOpen(true)}
+                  className="gap-2"
+                  data-ocid="fiftyjump.secondary_button"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview Form
+                </Button>
               </div>
               {fiftyJumpChecks.length === 0 ? (
                 <div
@@ -1436,6 +1600,18 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
           jumpsSince={jumpsSince}
           isSubmitting={submitFiftyJumpCheck.isPending}
           onSubmit={(data) => submitFiftyJumpCheck.mutate(data)}
+        />
+      )}
+
+      {/* ── 50-Jump Check Preview Modal ── */}
+      {rig && (
+        <FiftyJumpCheckModal
+          open={previewCheckOpen}
+          rigName={rig.name}
+          jumpsSince={jumpsSince}
+          isSubmitting={false}
+          onClose={() => setPreviewCheckOpen(false)}
+          onSubmit={() => setPreviewCheckOpen(false)}
         />
       )}
 
@@ -1991,7 +2167,7 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
               <Input
                 value={packerName}
                 onChange={(e) => setPackerName(e.target.value)}
-                placeholder="Rigger's full name"
+                placeholder="Packer's full name"
                 data-ocid="packlog.input"
               />
             </div>

@@ -79,6 +79,7 @@ interface Props {
   rigName: string;
   jumpsSince: number;
   isSubmitting: boolean;
+  onClose?: () => void;
   onSubmit: (data: {
     completedBy: string;
     completedDate: string;
@@ -93,6 +94,7 @@ export default function FiftyJumpCheckModal({
   rigName,
   jumpsSince,
   isSubmitting,
+  onClose,
   onSubmit,
 }: Props) {
   const [items, setItems] = useState<CheckItem[]>(
@@ -150,17 +152,24 @@ export default function FiftyJumpCheckModal({
     });
   };
 
+  const isPreview = !!onClose;
+
   return (
     <Dialog
       open={open}
-      onOpenChange={() => {
-        /* non-dismissable */
+      onOpenChange={(val) => {
+        if (!val && isPreview && onClose) onClose();
+        // non-dismissable when not in preview mode
       }}
     >
       <DialogContent
         className="max-w-2xl w-full"
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => {
+          if (!isPreview) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (!isPreview) e.preventDefault();
+        }}
         data-ocid="fiftyjump.dialog"
       >
         <DialogHeader>
@@ -170,11 +179,14 @@ export default function FiftyJumpCheckModal({
             </div>
             <div>
               <DialogTitle className="text-lg font-bold text-foreground">
-                50-Jump Check Required — {rigName}
+                {isPreview
+                  ? `50-Jump Check Form Preview — ${rigName}`
+                  : `50-Jump Check Required — ${rigName}`}
               </DialogTitle>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {jumpsSince} jumps since last check. Complete all items to
-                continue.
+                {isPreview
+                  ? "Preview only — fill in to see how the form works."
+                  : `${jumpsSince} jumps since last check. Complete all items to continue.`}
               </p>
             </div>
           </div>
@@ -313,13 +325,13 @@ export default function FiftyJumpCheckModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="completedBy">
-                    Performed By (Rigger Name)
+                    Performed By (Packer Name)
                   </Label>
                   <Input
                     id="completedBy"
                     value={completedBy}
                     onChange={(e) => setCompletedBy(e.target.value)}
-                    placeholder="Rigger name"
+                    placeholder="Packer name"
                     data-ocid="fiftyjump.input"
                   />
                 </div>
@@ -347,7 +359,7 @@ export default function FiftyJumpCheckModal({
               </div>
 
               <div className="space-y-1.5">
-                <Label>Rigger Signature</Label>
+                <Label>Packer Signature</Label>
                 <div className="border border-border rounded-lg overflow-hidden">
                   <SignaturePad onSave={(url) => setSignature(url)} />
                 </div>
@@ -364,10 +376,23 @@ export default function FiftyJumpCheckModal({
         </ScrollArea>
 
         <div className="flex items-center justify-between pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground">
-            {items.filter((i) => i.status !== null).length} / {items.length}{" "}
-            items marked
-          </p>
+          <div className="flex items-center gap-3">
+            {isPreview && (
+              <Button
+                variant="outline"
+                onClick={onClose}
+                data-ocid="fiftyjump.close_button"
+              >
+                Close Preview
+              </Button>
+            )}
+            {!isPreview && (
+              <p className="text-xs text-muted-foreground">
+                {items.filter((i) => i.status !== null).length} / {items.length}{" "}
+                items marked
+              </p>
+            )}
+          </div>
           <Button
             disabled={!canSubmit || isSubmitting}
             onClick={handleSubmit}
