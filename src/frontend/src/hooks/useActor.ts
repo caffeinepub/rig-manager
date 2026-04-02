@@ -26,13 +26,12 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
       // Wrap in try/catch so a failed access control init never blocks rig creation
       try {
-        const adminToken = getSecretParameter("caffeineAdminToken") || "";
         await actor._initializeAccessControlWithSecret(adminToken);
       } catch (e) {
-        // Ignore — any authenticated user is treated as valid by the backend
-        console.warn("Access control init skipped:", e);
+        console.warn("Access control init failed (non-fatal):", e);
       }
       return actor;
     },
@@ -40,6 +39,7 @@ export function useActor() {
     staleTime: Number.POSITIVE_INFINITY,
     // This will cause the actor to be recreated when the identity changes
     enabled: true,
+    retry: 3,
   });
 
   // When the actor changes, invalidate dependent queries
