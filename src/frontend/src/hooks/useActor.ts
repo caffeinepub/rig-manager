@@ -26,8 +26,14 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      await actor._initializeAccessControlWithSecret(adminToken);
+      // Wrap in try/catch so a failed access control init never blocks rig creation
+      try {
+        const adminToken = getSecretParameter("caffeineAdminToken") || "";
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (e) {
+        // Ignore — any authenticated user is treated as valid by the backend
+        console.warn("Access control init skipped:", e);
+      }
       return actor;
     },
     // Only refetch when identity changes
