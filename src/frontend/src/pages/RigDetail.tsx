@@ -453,7 +453,7 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
     },
   });
 
-  const isReserveExpiringSoon = rig?.reserveCanopy
+  const reserveDaysRemaining = rig?.reserveCanopy
     ? (() => {
         const expiry = new Date(
           getReserveExpiry(
@@ -461,10 +461,32 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
             rig.reserveCanopy.expiryDate,
           ),
         );
-        const diff = expiry.getTime() - Date.now();
-        return diff < 30 * 24 * 60 * 60 * 1000;
+        return Math.ceil(
+          (expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        );
       })()
-    : false;
+    : null;
+  const isReserveExpiringSoon =
+    reserveDaysRemaining !== null && reserveDaysRemaining < 30;
+  const isReserveExpired =
+    reserveDaysRemaining !== null && reserveDaysRemaining < 0;
+
+  const aadServiceDays = rig?.aad?.serviceDate
+    ? (() => {
+        const t = new Date(rig.aad!.serviceDate).getTime();
+        return Number.isNaN(t)
+          ? null
+          : Math.ceil((t - Date.now()) / (1000 * 60 * 60 * 24));
+      })()
+    : null;
+  const aadEndOfLifeDays = rig?.aad?.endOfLife
+    ? (() => {
+        const t = new Date(rig.aad!.endOfLife).getTime();
+        return Number.isNaN(t)
+          ? null
+          : Math.ceil((t - Date.now()) / (1000 * 60 * 60 * 24));
+      })()
+    : null;
 
   // ── Main Canopy ───────────────────────────────────────────────────────────
   const [mainOpen, setMainOpen] = useState(false);
@@ -988,6 +1010,30 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
             >
               {rig.aad && (
                 <>
+                  {aadServiceDays !== null && aadServiceDays <= 30 && (
+                    <div
+                      className={`flex items-center gap-2 rounded-lg p-3 mb-3 ${aadServiceDays < 0 ? "text-red-700 bg-red-50 border border-red-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}
+                    >
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">
+                        {aadServiceDays < 0
+                          ? `AAD service overdue by ${Math.abs(aadServiceDays)} day${Math.abs(aadServiceDays) === 1 ? "" : "s"} — service required immediately!`
+                          : `AAD service due in ${aadServiceDays} day${aadServiceDays === 1 ? "" : "s"}`}
+                      </span>
+                    </div>
+                  )}
+                  {aadEndOfLifeDays !== null && aadEndOfLifeDays <= 30 && (
+                    <div
+                      className={`flex items-center gap-2 rounded-lg p-3 mb-3 ${aadEndOfLifeDays < 0 ? "text-red-700 bg-red-50 border border-red-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}
+                    >
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">
+                        {aadEndOfLifeDays < 0
+                          ? `AAD end of life reached ${Math.abs(aadEndOfLifeDays)} day${Math.abs(aadEndOfLifeDays) === 1 ? "" : "s"} ago — AAD must be retired!`
+                          : `AAD end of life in ${aadEndOfLifeDays} day${aadEndOfLifeDays === 1 ? "" : "s"}`}
+                      </span>
+                    </div>
+                  )}
                   <InfoRow label="Manufacturer" value={rig.aad.manufacturer} />
                   <InfoRow label="Type" value={rig.aad.aadType} />
                   <InfoRow label="Serial Number" value={rig.aad.serialNumber} />
@@ -1013,15 +1059,14 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
               {rig.reserveCanopy && (
                 <>
                   {isReserveExpiringSoon && (
-                    <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                    <div
+                      className={`flex items-center gap-2 rounded-lg p-3 mb-3 ${isReserveExpired ? "text-red-700 bg-red-50 border border-red-200" : "text-amber-700 bg-amber-50 border border-amber-200"}`}
+                    >
                       <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                       <span className="text-sm font-medium">
-                        Reserve expires{" "}
-                        {getReserveExpiry(
-                          rig.reserveCanopy.dateRepacked,
-                          rig.reserveCanopy.expiryDate,
-                        )}{" "}
-                        — repack required soon!
+                        {isReserveExpired
+                          ? `Reserve canopy EXPIRED ${Math.abs(reserveDaysRemaining!)} day${Math.abs(reserveDaysRemaining!) === 1 ? "" : "s"} ago — repack required immediately!`
+                          : `Reserve expires in ${reserveDaysRemaining} day${reserveDaysRemaining === 1 ? "" : "s"} — repack required soon!`}
                       </span>
                     </div>
                   )}
