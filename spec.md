@@ -1,26 +1,22 @@
 # Rig Manager
 
 ## Current State
-Flagging warnings exist on rig dashboard cards. Inside the RigDetail view, the Reserve Canopy ComponentCard has a basic `isReserveExpiringSoon` amber warning. The AAD ComponentCard has no inline warnings at all.
+Dashboard.tsx getFlaggedItems checks reserve expiry and AAD dates but NOT jump counts. RigDetail.tsx renders canopy cards with InfoRow values but no inline warnings.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Warning banners inside the AAD ComponentCard for:
-  - AAD service overdue (critical/red)
-  - AAD service due within 30 days (warning/amber)
-  - AAD end of life reached (critical/red)
-  - AAD end of life within 30 days (warning/amber)
-- Enhanced reserve expiry warning: show critical (red) when expired, amber when expiring within 30 days, with days remaining count
+- Jump limit flagging for Main Canopy in getFlaggedItems: total jumps >= 1500, line set >= 350, main risers >= 1000
+- Jump limit flagging for Tandem Canopy in getFlaggedItems: total jumps >= 1500, line set >= 350, drogue/bridle >= 600, lower bridle/kill line >= 300
+- Inline warning badges in RigDetail.tsx on both canopy cards when limits are reached
 
 ### Modify
-- RigDetail.tsx: add computed AAD warning flags and render warning banners inside the AAD ComponentCard
-- RigDetail.tsx: improve the reserve expiry warning to differentiate expired vs expiring-soon
+- getFlaggedItems in Dashboard.tsx: extend with canopy jump limit checks
+- RigDetail.tsx InfoRows for jump counts: add warning indicator when value meets or exceeds limit
 
 ### Remove
-Nothing removed.
+Nothing.
 
 ## Implementation Plan
-1. In RigDetail.tsx, add helper logic to compute AAD service days remaining and end-of-life days remaining
-2. Render warning banners inside the AAD ComponentCard (before InfoRows)
-3. Enhance the reserve expiry banner to show red/critical when expired, include days remaining
+1. Extend getFlaggedItems in Dashboard.tsx with mainCanopy and tandemCanopy jump count checks, pushing critical flags with descriptive labels
+2. In RigDetail.tsx, add inline red warning badge or icon next to jump count InfoRows for both canopy types when their respective limits are met

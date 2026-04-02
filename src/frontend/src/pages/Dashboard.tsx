@@ -91,6 +91,51 @@ function getFlaggedItems(
     }
   }
 
+  // Main Canopy jump limits
+  if (rig.mainCanopy) {
+    const mc = rig.mainCanopy;
+    if (Number(mc.jumpsOnLineSet) >= 350)
+      flags.push({
+        label: "Main canopy line set limit reached (350 jumps)",
+        severity: "critical",
+      });
+    if (Number(mc.jumpsOnMainRisers) >= 1000)
+      flags.push({
+        label: "Main canopy risers limit reached (1000 jumps)",
+        severity: "critical",
+      });
+    if (Number(mc.totalJumps) >= 1500)
+      flags.push({
+        label: "Main canopy total jump limit reached (1500 jumps)",
+        severity: "critical",
+      });
+  }
+
+  // Tandem Canopy jump limits
+  if (rig.tandemCanopy) {
+    const tc = rig.tandemCanopy;
+    if (Number(tc.jumpsOnLineSet) >= 350)
+      flags.push({
+        label: "Tandem line set limit reached (350 jumps)",
+        severity: "critical",
+      });
+    if (Number(tc.jumpsOnDrogueBridle) >= 600)
+      flags.push({
+        label: "Tandem drogue/bridle limit reached (600 jumps)",
+        severity: "critical",
+      });
+    if (Number(tc.jumpsOnLowerBridleKillLine) >= 300)
+      flags.push({
+        label: "Tandem lower bridle/kill line limit reached (300 jumps)",
+        severity: "critical",
+      });
+    if (Number(tc.totalJumps) >= 1500)
+      flags.push({
+        label: "Tandem total jump limit reached (1500 jumps)",
+        severity: "critical",
+      });
+  }
+
   return flags;
 }
 

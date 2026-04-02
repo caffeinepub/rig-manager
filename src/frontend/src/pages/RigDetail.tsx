@@ -101,13 +101,24 @@ const parseBigInt = (v: string): bigint => {
   return BigInt(Number.isNaN(n) ? 0 : n);
 };
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  label,
+  value,
+  warning,
+}: { label: string; value: string; warning?: boolean }) {
   return (
     <div className="flex flex-col sm:flex-row sm:gap-4 py-1.5">
       <span className="text-sm text-muted-foreground w-40 flex-shrink-0">
         {label}
       </span>
-      <span className="text-sm font-medium text-foreground">{value}</span>
+      <span className="text-sm font-medium text-foreground flex items-center gap-2">
+        {value}
+        {warning && (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">
+            ⚠ LIMIT REACHED
+          </span>
+        )}
+      </span>
     </div>
   );
 }
@@ -1170,16 +1181,19 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                       value={Number(
                         rig.mainCanopy.jumpsOnLineSet,
                       ).toLocaleString()}
+                      warning={Number(rig.mainCanopy.jumpsOnLineSet) >= 350}
                     />
                     <InfoRow
                       label="Jumps on Main Risers"
                       value={Number(
                         rig.mainCanopy.jumpsOnMainRisers,
                       ).toLocaleString()}
+                      warning={Number(rig.mainCanopy.jumpsOnMainRisers) >= 1000}
                     />
                     <InfoRow
                       label="Total Jumps"
                       value={Number(rig.mainCanopy.totalJumps).toLocaleString()}
+                      warning={Number(rig.mainCanopy.totalJumps) >= 1500}
                     />
                   </>
                 )}
@@ -1259,6 +1273,7 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                       value={Number(
                         rig.tandemCanopy.jumpsOnLineSet,
                       ).toLocaleString()}
+                      warning={Number(rig.tandemCanopy.jumpsOnLineSet) >= 350}
                     />
                     <InfoRow
                       label="Jumps on Main Risers"
@@ -1271,18 +1286,26 @@ export default function RigDetail({ rigId, onBack }: RigDetailProps) {
                       value={Number(
                         rig.tandemCanopy.jumpsOnDrogueBridle,
                       ).toLocaleString()}
+                      warning={
+                        Number(rig.tandemCanopy.jumpsOnDrogueBridle) >= 600
+                      }
                     />
                     <InfoRow
                       label="Jumps on Lower Bridle/Kill Line"
                       value={Number(
                         rig.tandemCanopy.jumpsOnLowerBridleKillLine,
                       ).toLocaleString()}
+                      warning={
+                        Number(rig.tandemCanopy.jumpsOnLowerBridleKillLine) >=
+                        300
+                      }
                     />
                     <InfoRow
                       label="Total Jumps"
                       value={Number(
                         rig.tandemCanopy.totalJumps,
                       ).toLocaleString()}
+                      warning={Number(rig.tandemCanopy.totalJumps) >= 1500}
                     />
                   </>
                 )}
